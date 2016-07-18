@@ -6,11 +6,22 @@
 package agentes;
 
 import jade.core.Agent;
+import java.util.Iterator;
 
 /**
  *
  * @author Matheus
  */
 public class AgenteProprietario extends Agent{
-    
+    @Override
+    protected void setup(){
+        System.out.println("Oi, eu sou o agente proprietário!");
+        System.out.println("Meu local-name é " +getAID().getLocalName());
+        System.out.println("Meu GUID é " +getAID().getName());
+        System.out.println("Meus endereços são:");
+        Iterator it = getAID().getAllAddresses();
+        while(it.hasNext()){
+            System.out.println("- " +it.next());
+        }
+    }
 }
