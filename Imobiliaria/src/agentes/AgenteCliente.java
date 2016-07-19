@@ -7,6 +7,10 @@ package agentes;
 
 import jade.core.AID;
 import jade.core.Agent;
+import jade.domain.DFService;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.FIPAException;
 import java.util.Iterator;
 
 /**
@@ -27,6 +31,35 @@ public class AgenteCliente extends Agent{
         Iterator it = getAID().getAllAddresses();
         while(it.hasNext()){
             System.out.println("- " +it.next());
+        }
+        
+        //Criando uma entrada no DF
+        DFAgentDescription template = new DFAgentDescription();
+        
+        //Criando um objeto contendo a descrição do serviço
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("Venda de imovel");
+        //Adicionando o serviço na entrada
+        template.addServices(sd);
+        try {
+            //Array com agentes que possuem o serviço
+            DFAgentDescription[] result = DFService.search(this, template);
+            
+            //Imprimir resultados
+            for(int i = 0 ; i < result.length ; i++){
+                String out = result[i].getName().getLocalName() + " provê ";
+                
+                Iterator iter = result[i].getAllServices();
+                
+                while(iter.hasNext()){
+                    ServiceDescription SD = (ServiceDescription) iter.next();
+                    
+                    System.out.println(out + " " + SD.getName());
+                }
+                
+            }
+        } catch(FIPAException e) {
+            e.printStackTrace();
         }
         
         Object[] args = getArguments();

@@ -6,7 +6,13 @@
 package agentes;
 
 import jade.core.Agent;
+import jade.domain.DFService;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.FIPAException;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -22,6 +28,32 @@ public class AgenteProprietario extends Agent{
         Iterator it = getAID().getAllAddresses();
         while(it.hasNext()){
             System.out.println("- " +it.next());
+        }
+        
+        //Criando uma entrada no DF
+        DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
+        
+        //Criando um serviço
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("Venda de imovel");              //tipo do serviço
+        sd.setName("Serviço de venda de imovel");   //nome do serviço
+        //Adicionando o serviço
+        dfd.addServices(sd);
+        
+        //Registrando o agente nas paginas amarelas
+        try {
+            DFService.register(this, dfd);
+        } catch(FIPAException e){
+            e.printStackTrace();
+        }
+    }
+    
+    protected void takeDown(){
+        try {
+            DFService.deregister(this);
+        } catch (FIPAException e) {
+            e.printStackTrace();
         }
     }
 }
