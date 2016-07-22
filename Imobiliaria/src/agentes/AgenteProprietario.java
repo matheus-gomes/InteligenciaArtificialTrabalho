@@ -38,6 +38,7 @@ public class AgenteProprietario extends Agent{
         ServiceDescription sd = new ServiceDescription();
         sd.setType("Venda de imovel");              //tipo do serviço
         sd.setName("Serviço de venda de imovel");   //nome do serviço
+        
         //Adicionando o serviço
         dfd.addServices(sd);
         
