@@ -12,6 +12,7 @@ import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
+import jade.lang.acl.ACLMessage;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -23,7 +24,7 @@ public class AgenteCliente extends Agent {
 
     private Imovel imovel = new Imovel();
 
-//    private Vector agentesProprietarios;
+    private AID[] agentesProprietarios;
 
     @Override
     protected void setup() {
@@ -51,20 +52,31 @@ public class AgenteCliente extends Agent {
                 try {
                     //Array com agentes que possuem o serviço
                     DFAgentDescription[] result = DFService.search(myAgent, template);
-//                    agentesProprietarios.clear();
+                    agentesProprietarios = new AID[result.length];
                     //Imprimir resultados
                     for (int i = 0; i < result.length; i++) {
-                        String out = result[i].getName().getLocalName() + " provê ";
-
-                        Iterator iter = result[i].getAllServices();
-
-                        while (iter.hasNext()) {
-                            ServiceDescription SD = (ServiceDescription) iter.next();
-
-                            System.out.println(out + " " + SD.getName());
+//                        String out = result[i].getName().getLocalName() + " provê ";
+//
+//                        Iterator iter = result[i].getAllServices();
+//
+//                        while (iter.hasNext()) {
+//                            ServiceDescription SD = (ServiceDescription) iter.next();
+//
+//                            System.out.println(out + " " + SD.getName());
+//                        }
+                        agentesProprietarios[i] = result[i].getName();
+                        System.out.println(agentesProprietarios[i].getName());
+                        
+                        ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+                        for(int j = 0 ; j < agentesProprietarios.length ; j++){
+                            msg.addReceiver(agentesProprietarios[j]);
                         }
-//                        agentesProprietarios.addElement(result[i].getName());
-//                        System.out.println(agentesProprietarios.get(i));
+                        msg.addReceiver(new AID(result[i].getName().getLocalName(), AID.ISLOCALNAME));
+                        msg.setLanguage("Português");
+                        msg.setContent("Estou procurando uma casa");
+                        send(msg);
+                        
+                        
                     }
                 } catch (FIPAException e) {
                     e.printStackTrace();
@@ -91,4 +103,5 @@ public class AgenteCliente extends Agent {
     protected void takeDown() {
         System.out.println("Agente cliente " + getAID().getName() + " encerrando.");
     }
+    
 }
