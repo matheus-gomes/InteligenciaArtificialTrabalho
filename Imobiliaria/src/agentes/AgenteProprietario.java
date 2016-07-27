@@ -84,7 +84,7 @@ public class AgenteProprietario extends Agent {
     private class ReceberSolicitacao extends CyclicBehaviour {
 
         private boolean available = true; //variavel que indica se o imovel esta disponivel
-        private int step = 0;
+        //private int step = 0;
 
         @Override
         public void action() {
@@ -120,7 +120,6 @@ public class AgenteProprietario extends Agent {
         public void action() {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
             ACLMessage msg = myAgent.receive(mt);
-            msg = myAgent.receive(mt);
             
             if (msg != null) {
                 ACLMessage reply = msg.createReply();
@@ -145,5 +144,42 @@ public class AgenteProprietario extends Agent {
             }
         }
 
+    }
+    
+    private class GerenciadorDeNegociacao extends CyclicBehaviour {
+        private double valorProposta = imovel.getValor();
+        private int numeroPropostas = 0;
+        
+        @Override
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
+            ACLMessage msg = myAgent.receive(mt);
+            
+            if (msg != null) {
+                ACLMessage reply = msg.createReply();
+                System.out.println(msg.getSender().getName() + " pode pagar " + msg.getContent());
+                
+                double valorOferecido = Double.valueOf(msg.getContent());
+                
+                if(valorOferecido >= valorProposta) {
+                    reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+                    reply.setContent("Proposta aceita.");
+                }
+                else if((valorOferecido < valorProposta) && (numeroPropostas < 3)){
+                    valorProposta = valorProposta * 0.95;
+                    reply.setPerformative(ACLMessage.PROPOSE);
+                    reply.setContent(String.valueOf(valorProposta));
+                }
+                else {
+                    reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                    reply.setContent("Proposta recusada.");
+                }
+                send(reply);
+            }
+            else {
+                block();
+            }
+        }
+    
     }
 }
