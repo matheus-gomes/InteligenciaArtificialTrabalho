@@ -10,7 +10,6 @@ import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
-import jade.core.behaviours.TickerBehaviour;
 import jade.core.behaviours.WakerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -19,7 +18,6 @@ import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import java.util.Iterator;
-import java.util.Vector;
 
 /**
  *
@@ -29,7 +27,11 @@ public class AgenteCliente extends Agent {
 
     private Imovel imovel = new Imovel();
 
-    private AID[] agentesProprietarios;
+    private AID[] agentesProprietarios; //agentes que possuem imoveis do tipo que o cliente deseja
+//    private MelhoresProprietarios[] melhoresProprietarios; //lista de agentes que possuem as melhores vendas para o cliente específico
+//    private AID melhorProprietario; //agente que possui imovel mais vantajoso para o cliente
+//    private int quantVendedores = 0;
+//    private int notaProprietario;
 
     @Override
     protected void setup() {
@@ -106,6 +108,9 @@ public class AgenteCliente extends Agent {
 //            
 //        });
         addBehaviour(new TrocaInformacoes());
+        addBehaviour(new Negociar());
+        addBehaviour(new FecharNegocio());
+        addBehaviour(new OfertaRecusada());
 
     }
 
@@ -117,8 +122,8 @@ public class AgenteCliente extends Agent {
 
         private int step = 0;   //etapa na qual a comunicação se encontra
         private int grade = 0;  //o grau de cumprimento das requisições
-        private double valorProposta = imovel.getValor();
-        private int quantPropostas = 0;
+        //private double valorProposta = imovel.getValor();
+        //private int quantPropostas = 0;
 
         @Override
         public void action() {
@@ -139,7 +144,7 @@ public class AgenteCliente extends Agent {
                             //tratar problema
                         } else {
                             System.out.println(msg.getSender().getName() + " informa que o imóvel não está disponível");
-                            step = 5;
+                            step = 4;
                         }
 
                     } else {
@@ -202,6 +207,26 @@ public class AgenteCliente extends Agent {
                         if ((valor >= (imovel.getValor() * 0.80)) && (valor <= (imovel.getValor() * 1.20))) {
                             grade++;
                         }
+                        
+//                        if(grade >= 2){
+//                            melhoresProprietarios[quantVendedores].setProprietario(msg.getSender());
+//                            melhoresProprietarios[quantVendedores].setGradeProprietario(grade);
+//                            melhoresProprietarios[quantVendedores].setValorPropriedade(valor);
+//                            quantVendedores++;
+//                        }
+                        
+//                        for (int i = 0; i < melhoresProprietarios.length; i++) {
+//                            MelhoresProprietarios aux = melhoresProprietarios[i];
+//                            for (int j = i - 1; (j >= 0) && (melhoresProprietarios[j].getGradeProprietario() <= aux.getGradeProprietario()); j--) {
+//                                if(melhoresProprietarios[j].getGradeProprietario() == aux.getGradeProprietario()){
+//                                    if(melhoresProprietarios[j].getValorPropriedade() > aux.getValorPropriedade()){
+//                                        melhoresProprietarios[j + 1] = melhoresProprietarios[j];
+//                                        melhoresProprietarios[j] = aux;
+//                                    }
+//                                }
+//                            }
+//                        }
+               
 
                         ACLMessage reply = msg.createReply();
                         if (grade >= 2) {
@@ -211,67 +236,136 @@ public class AgenteCliente extends Agent {
                         } else {
                             reply.setPerformative(ACLMessage.FAILURE);
                             reply.setContent("Nao tenho interesse no imovel");
-                            step = 5;
+                            step = 4;
                         }
                         send(reply);
 
-                        
                     } else {
                         block();
                     }
                     break;
 
                 case 4:
-                    msg = myAgent.receive();
-
-                    if (msg != null) {
-                        ACLMessage reply = msg.createReply();
-                        if(msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
-                            System.out.println(msg.getSender() + " aceitou sua proposta.");
-                            step = 5;
-                        }
-                        else if(msg.getPerformative() == ACLMessage.PROPOSE){
-                            System.out.println(msg.getSender().getName() + " ofereceu o imóvel por " + msg.getContent());
-                            if (quantPropostas < 3) {
-                                double valorOferecido = Double.valueOf(msg.getContent());
-                                if (valorOferecido <= valorProposta) {
-                                    reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
-                                    reply.setContent("Proposta aceita.");
-                                }
-                                else {
-                                    reply.setPerformative(ACLMessage.PROPOSE);
-                                    valorProposta = valorProposta * 1.05;
-                                    reply.setContent(String.valueOf(valorProposta));
-                                    quantPropostas++;
-                                }
-                                send(msg);
-                            }
-                            else {
-                                reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
-                                reply.setContent("Proposta rejeitada.");
-                            }
-                        }
-                        else {
-                            if(msg.getPerformative() == ACLMessage.REJECT_PROPOSAL){
-                                System.out.println(msg.getSender() + " recusou sua proposta.");
-                                step = 5;
-                            }
-                        }
-                        send(reply);
-                    } else {
-                        block();
-                    }
+                    
+//                    mt = MessageTemplate.MatchPerformative(ACLMessage.UNKNOWN);
+//                    msg = myAgent.receive(mt);
+//
+//                    if (msg != null) {
+//                        ACLMessage reply = msg.createReply();
+//                        if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
+//                            System.out.println(msg.getSender() + " aceitou sua proposta.");
+//                            step = 5;
+//                        } else if (msg.getPerformative() == ACLMessage.PROPOSE) {
+//                            System.out.println(msg.getSender().getName() + " ofereceu o imóvel por " + msg.getContent());
+//                            double valorOferecido = Double.valueOf(msg.getContent());
+//                            if (valorOferecido <= valorProposta) {
+//                                reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+//                                reply.setContent("Proposta aceita.");
+//                            } else if ((valorOferecido > valorProposta) && (quantPropostas < 3)) {
+//                                valorProposta = valorProposta * 1.05;
+//                                reply.setPerformative(ACLMessage.CFP);
+//                                reply.setContent(String.valueOf(valorProposta));
+//                                quantPropostas++;
+//                            } else {
+//                                reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
+//                                reply.setContent("Proposta rejeitada.");
+//                                step = 5;
+//                            }
+//
+//                        } else {
+//                            if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
+//                                System.out.println(msg.getSender() + " recusou sua proposta.");
+//                                step = 5;
+//                            }
+//                        }
+//                        send(reply);
+//                    } else {
+//                        block();
+//                    }
+                    
+                    
                     break;
             }
         }
 
         @Override
         public boolean done() {
-            return step == 5;
+            return step == 4;
         }
 
     }
-    
+
+    private class Negociar extends CyclicBehaviour {
+
+        private double valorProposta = imovel.getValor();
+        private int numeroPropostas = 0;
+
+        @Override
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE);
+            ACLMessage msg = myAgent.receive(mt);
+
+            if (msg != null) {
+                ACLMessage reply = msg.createReply();
+                System.out.println(msg.getSender().getName() + " ofereceu o imóvel por " + msg.getContent());
+                
+                double valorOferecido = Double.valueOf(msg.getContent()); //valor oferecido pelo proprietario
+                
+                if (valorOferecido <= valorProposta) {
+                    reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+                    reply.setContent("Proposta aceita.");
+                } else if ((valorOferecido > valorProposta) && (numeroPropostas < 3)) {
+                    
+                    valorProposta = valorProposta * 1.05;
+                    reply.setPerformative(ACLMessage.CFP);
+                    reply.setContent(String.valueOf(valorProposta));
+                    numeroPropostas++;
+                } else {
+                    reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                    reply.setContent("Proposta rejeitada.");
+                    //step = 5;
+                }
+                send(reply);
+
+            } else {
+                block();
+            }
+
+        }
+        
+    }
+
+    private class FecharNegocio extends CyclicBehaviour {
+
+        @Override
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
+            ACLMessage msg = myAgent.receive(mt);
+
+            if (msg != null) {
+                System.out.println(msg.getSender() + " aceitou sua proposta.");
+            } else {
+                block();
+            }
+        }
+
+    }
+
+    private class OfertaRecusada extends CyclicBehaviour {
+
+        @Override
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REJECT_PROPOSAL);
+            ACLMessage msg = myAgent.receive(mt);
+
+            if (msg != null) {
+                System.out.println(msg.getSender() + " recusou sua proposta.");
+            } else {
+                block();
+            }
+        }
+    }
+
 //    private class NegociacaoRecusada extends OneShotBehaviour {
 //
 //        @Override
@@ -286,5 +380,4 @@ public class AgenteCliente extends Agent {
 //        
 //        
 //    }
-
 }

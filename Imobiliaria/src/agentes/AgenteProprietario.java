@@ -71,6 +71,10 @@ public class AgenteProprietario extends Agent {
 
         addBehaviour(new ReceberSolicitacao());
         addBehaviour(new TrocaInformações());
+        //addBehaviour(new GerenciadorDeNegociacao());
+        addBehaviour(new Negociar());
+        addBehaviour(new FecharNegocio());
+        addBehaviour(new OfertaRecusada());
     }
 
     protected void takeDown() {
@@ -120,7 +124,7 @@ public class AgenteProprietario extends Agent {
         public void action() {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
             ACLMessage msg = myAgent.receive(mt);
-            
+
             if (msg != null) {
                 ACLMessage reply = msg.createReply();
                 System.out.println(msg.getSender().getName() + "perguntou: " + msg.getContent());
@@ -146,40 +150,119 @@ public class AgenteProprietario extends Agent {
 
     }
     
-    private class GerenciadorDeNegociacao extends CyclicBehaviour {
+    private class Negociar extends CyclicBehaviour {
+
         private double valorProposta = imovel.getValor();
         private int numeroPropostas = 0;
-        
+
         @Override
         public void action() {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
             ACLMessage msg = myAgent.receive(mt);
-            
+
             if (msg != null) {
                 ACLMessage reply = msg.createReply();
                 System.out.println(msg.getSender().getName() + " pode pagar " + msg.getContent());
-                
-                double valorOferecido = Double.valueOf(msg.getContent());
-                
-                if(valorOferecido >= valorProposta) {
+
+                double valorOferecido = Double.valueOf(msg.getContent()); //valor oferecido pelo cliente
+
+                if (valorOferecido >= valorProposta) {
                     reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
                     reply.setContent("Proposta aceita.");
-                }
-                else if((valorOferecido < valorProposta) && (numeroPropostas < 3)){
+                } else if ((valorOferecido < valorProposta) && (numeroPropostas < 3)) {
                     valorProposta = valorProposta * 0.95;
                     reply.setPerformative(ACLMessage.PROPOSE);
                     reply.setContent(String.valueOf(valorProposta));
-                }
-                else {
+                    numeroPropostas++;
+                } else {
                     reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
                     reply.setContent("Proposta recusada.");
                 }
                 send(reply);
+            } else {
+                block();
+            }
+
+        }
+
+    }
+    
+    private class FecharNegocio extends CyclicBehaviour {
+
+        @Override
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
+            ACLMessage msg = myAgent.receive(mt);
+            
+            if(msg != null){
+                System.out.println(msg.getSender() + " aceitou sua proposta.");
             }
             else {
                 block();
             }
         }
-    
+        
     }
+    
+    private class OfertaRecusada extends CyclicBehaviour {
+        
+        @Override
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REJECT_PROPOSAL);
+            ACLMessage msg = myAgent.receive(mt);
+            
+            if(msg != null){
+                System.out.println(msg.getSender() + " recusou sua proposta.");
+            }
+            else {
+                block();
+            }
+        }
+    }
+    
+//    private class GerenciadorDeNegociacao extends CyclicBehaviour {
+//
+//        private double valorProposta = imovel.getValor();
+//        private int numeroPropostas = 0;
+//
+//        @Override
+//        public void action() {
+//            ACLMessage msg = myAgent.receive();
+//
+//            if (msg != null) {
+//                ACLMessage reply = msg.createReply();
+//
+//                if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
+//                    System.out.println(msg.getSender() + " aceitou sua proposta.");
+//                } else if (msg.getPerformative() == ACLMessage.PROPOSE) {
+//                    System.out.println(msg.getSender().getName() + " pode pagar " + msg.getContent());
+//
+//                    double valorOferecido = Double.valueOf(msg.getContent());
+//
+//                    if (valorOferecido >= valorProposta) {
+//                        reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+//                        reply.setContent("Proposta aceita.");
+//                    } else if ((valorOferecido < valorProposta) && (numeroPropostas < 3)) {
+//                        valorProposta = valorProposta * 0.95;
+//                        reply.setPerformative(ACLMessage.PROPOSE);
+//                        reply.setContent(String.valueOf(valorProposta));
+//                        numeroPropostas++;
+//                    } else {
+//                        reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
+//                        reply.setContent("Proposta recusada.");
+//                    }
+//                } else {
+//                    if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
+//                        System.out.println(msg.getSender() + " recusou sua proposta.");
+//
+//                    }
+//                }
+//
+//                send(reply);
+//            } else {
+//                block();
+//            }
+//        }
+//
+//    }
 }
