@@ -7,11 +7,17 @@ package agentes;
 
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.Behaviour;
+import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
+import jade.core.behaviours.WakerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
+import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -23,7 +29,7 @@ public class AgenteCliente extends Agent {
 
     private Imovel imovel = new Imovel();
 
-//    private Vector agentesProprietarios;
+    private AID[] agentesProprietarios;
 
     @Override
     protected void setup() {
@@ -35,42 +41,6 @@ public class AgenteCliente extends Agent {
         while (it.hasNext()) {
             System.out.println("- " + it.next());
         }
-
-        addBehaviour(new TickerBehaviour(this, 60000) {
-
-            @Override
-            protected void onTick() {
-                //Criando uma entrada no DF
-                DFAgentDescription template = new DFAgentDescription();
-
-                //Criando um objeto contendo a descrição do serviço
-                ServiceDescription sd = new ServiceDescription();
-                sd.setType("Venda de imovel");
-                //Adicionando o serviço na entrada
-                template.addServices(sd);
-                try {
-                    //Array com agentes que possuem o serviço
-                    DFAgentDescription[] result = DFService.search(myAgent, template);
-//                    agentesProprietarios.clear();
-                    //Imprimir resultados
-                    for (int i = 0; i < result.length; i++) {
-                        String out = result[i].getName().getLocalName() + " provê ";
-
-                        Iterator iter = result[i].getAllServices();
-
-                        while (iter.hasNext()) {
-                            ServiceDescription SD = (ServiceDescription) iter.next();
-
-                            System.out.println(out + " " + SD.getName());
-                        }
-//                        agentesProprietarios.addElement(result[i].getName());
-//                        System.out.println(agentesProprietarios.get(i));
-                    }
-                } catch (FIPAException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
 
         Object[] args = getArguments();
         if (args != null && args.length > 0) {
@@ -86,9 +56,235 @@ public class AgenteCliente extends Agent {
             System.out.println("Sem parâmetros especificados");
             doDelete();
         }
+
+        addBehaviour(new WakerBehaviour(this, 10000) {
+            @Override
+            protected void onWake() {
+                //Criando uma entrada no DF
+                DFAgentDescription template = new DFAgentDescription();
+
+                //Criando um objeto contendo a descrição do serviço
+                ServiceDescription sd = new ServiceDescription();
+                sd.setType(imovel.getTipoImovel());
+                //Adicionando o serviço na entrada
+                template.addServices(sd);
+                try {
+                    //Array com agentes que possuem o serviço
+                    DFAgentDescription[] result = DFService.search(myAgent, template);
+                    agentesProprietarios = new AID[result.length];
+                    //Imprimir resultados
+                    for (int i = 0; i < result.length; i++) {
+//                        String out = result[i].getName().getLocalName() + " provê ";
+//
+//                        Iterator iter = result[i].getAllServices();
+//
+//                        while (iter.hasNext()) {
+//                            ServiceDescription SD = (ServiceDescription) iter.next();
+//
+//                            System.out.println(out + " " + SD.getName());
+//                        }
+                        agentesProprietarios[i] = result[i].getName();
+                        System.out.println(agentesProprietarios[i].getName());
+
+                        ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+                        for (int j = 0; j < agentesProprietarios.length; j++) {
+                            msg.addReceiver(agentesProprietarios[j]);
+                        }
+                        msg.addReceiver(new AID(result[i].getName().getLocalName(), AID.ISLOCALNAME));
+                        msg.setLanguage("Português");
+                        msg.setContent("Estou procurando um(a) " + imovel.getTipoImovel());
+                        send(msg);
+
+                    }
+                } catch (FIPAException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+//        addBehaviour(new CyclicBehaviour(this) {
+//            
+//        });
+        addBehaviour(new TrocaInformacoes());
+
     }
 
     protected void takeDown() {
         System.out.println("Agente cliente " + getAID().getName() + " encerrando.");
     }
+
+    private class TrocaInformacoes extends Behaviour {
+
+        private int step = 0;   //etapa na qual a comunicação se encontra
+        private int grade = 0;  //o grau de cumprimento das requisições
+        private double valorProposta = imovel.getValor();
+        private int quantPropostas = 0;
+
+        @Override
+        public void action() {
+
+            switch (step) {
+                case 0:
+                    MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+                    ACLMessage msg = myAgent.receive(mt);
+                    if (msg != null) {
+                        if (msg.getPerformative() == ACLMessage.INFORM) {
+                            System.out.println(msg.getSender().getName() + " informa que o imóvel está disponível");
+                            ACLMessage reply = msg.createReply();
+                            reply.setPerformative(ACLMessage.REQUEST);
+                            reply.setContent("Quantos metros quadrados tem seu imovel?");
+                            send(reply);
+
+                            step = 1;
+                            //tratar problema
+                        } else {
+                            System.out.println(msg.getSender().getName() + " informa que o imóvel não está disponível");
+                            step = 5;
+                        }
+
+                    } else {
+                        block();
+                    }
+                    break;
+
+                case 1:
+                    mt = MessageTemplate.MatchPerformative(ACLMessage.AGREE);
+                    msg = myAgent.receive(mt);
+
+                    if (msg != null) {
+                        double tamanho;
+                        tamanho = Double.valueOf(msg.getContent());
+                        System.out.println(msg.getSender().getName() + " informa que o tamanho do imovel é: " + tamanho);
+                        if ((tamanho >= (imovel.getTamanho() * 0.80)) && (tamanho <= (imovel.getTamanho() * 1.20))) {
+                            grade++;
+                        }
+                        ACLMessage reply = msg.createReply();
+                        reply.setPerformative(ACLMessage.REQUEST);
+                        reply.setContent("Em qual setor fica o imovel?");
+                        send(reply);
+
+                        step++;
+                    } else {
+                        block();
+                    }
+                    break;
+
+                case 2:
+                    mt = MessageTemplate.MatchPerformative(ACLMessage.AGREE);
+                    msg = myAgent.receive(mt);
+
+                    if (msg != null) {
+                        String setor;
+                        setor = msg.getContent();
+                        System.out.println(msg.getSender().getName() + " informa que a localização do imovel é: " + setor);
+                        if (setor.equals(imovel.getLocalizacao())) {
+                            grade++;
+                        }
+                        ACLMessage reply = msg.createReply();
+                        reply.setPerformative(ACLMessage.REQUEST);
+                        reply.setContent("Qual o valor do imovel?");
+                        send(reply);
+
+                        step++;
+                    } else {
+                        block();
+                    }
+                    break;
+
+                case 3:
+                    mt = MessageTemplate.MatchPerformative(ACLMessage.AGREE);
+                    msg = myAgent.receive(mt);
+
+                    if (msg != null) {
+                        double valor;
+                        valor = Double.valueOf(msg.getContent());
+                        System.out.println(msg.getSender().getName() + " informa que o valor do imovel é: " + valor);
+                        if ((valor >= (imovel.getValor() * 0.80)) && (valor <= (imovel.getValor() * 1.20))) {
+                            grade++;
+                        }
+
+                        ACLMessage reply = msg.createReply();
+                        if (grade >= 2) {
+                            reply.setPerformative(ACLMessage.CFP);
+                            reply.setContent(String.valueOf(imovel.getValor()));
+                            step = 4;
+                        } else {
+                            reply.setPerformative(ACLMessage.FAILURE);
+                            reply.setContent("Nao tenho interesse no imovel");
+                            step = 5;
+                        }
+                        send(reply);
+
+                        
+                    } else {
+                        block();
+                    }
+                    break;
+
+                case 4:
+                    msg = myAgent.receive();
+
+                    if (msg != null) {
+                        ACLMessage reply = msg.createReply();
+                        if(msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
+                            System.out.println(msg.getSender() + " aceitou sua proposta.");
+                            step = 5;
+                        }
+                        else if(msg.getPerformative() == ACLMessage.PROPOSE){
+                            System.out.println(msg.getSender().getName() + " ofereceu o imóvel por " + msg.getContent());
+                            if (quantPropostas < 3) {
+                                double valorOferecido = Double.valueOf(msg.getContent());
+                                if (valorOferecido <= valorProposta) {
+                                    reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+                                    reply.setContent("Proposta aceita.");
+                                }
+                                else {
+                                    reply.setPerformative(ACLMessage.PROPOSE);
+                                    valorProposta = valorProposta * 1.05;
+                                    reply.setContent(String.valueOf(valorProposta));
+                                    quantPropostas++;
+                                }
+                                send(msg);
+                            }
+                            else {
+                                reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                                reply.setContent("Proposta rejeitada.");
+                            }
+                        }
+                        else {
+                            if(msg.getPerformative() == ACLMessage.REJECT_PROPOSAL){
+                                System.out.println(msg.getSender() + " recusou sua proposta.");
+                                step = 5;
+                            }
+                        }
+                        send(reply);
+                    } else {
+                        block();
+                    }
+                    break;
+            }
+        }
+
+        @Override
+        public boolean done() {
+            return step == 5;
+        }
+
+    }
+    
+//    private class NegociacaoRecusada extends OneShotBehaviour {
+//
+//        @Override
+//        public void action() {
+//            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.FAILURE);
+//            ACLMessage msg = myAgent.receive(mt);
+//            
+//            System.out.println(msg.getSender() + " não tem interesse em sua proposta.");
+//            myAgent.doDelete();
+//        }
+//
+//        
+//        
+//    }
+
 }
