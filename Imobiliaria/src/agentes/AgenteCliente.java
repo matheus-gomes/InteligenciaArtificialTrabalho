@@ -9,7 +9,6 @@ import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.WakerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -26,12 +25,7 @@ import java.util.Iterator;
 public class AgenteCliente extends Agent {
 
     private Imovel imovel = new Imovel();
-
     private AID[] agentesProprietarios; //agentes que possuem imoveis do tipo que o cliente deseja
-//    private MelhoresProprietarios[] melhoresProprietarios; //lista de agentes que possuem as melhores vendas para o cliente específico
-//    private AID melhorProprietario; //agente que possui imovel mais vantajoso para o cliente
-//    private int quantVendedores = 0;
-//    private int notaProprietario;
 
     @Override
     protected void setup() {
@@ -48,7 +42,6 @@ public class AgenteCliente extends Agent {
         if (args != null && args.length > 0) {
             imovel.setTipoImovel((String) args[0]);
             imovel.setTamanho(Double.valueOf((String) args[1]));
-            //imovel.setQuantQuartos(Integer.parseInt((String) args[2]));
             imovel.setLocalizacao((String) args[2]);
             imovel.setValor(Double.valueOf((String) args[3]));
 
@@ -76,15 +69,7 @@ public class AgenteCliente extends Agent {
                     agentesProprietarios = new AID[result.length];
                     //Imprimir resultados
                     for (int i = 0; i < result.length; i++) {
-//                        String out = result[i].getName().getLocalName() + " provê ";
-//
-//                        Iterator iter = result[i].getAllServices();
-//
-//                        while (iter.hasNext()) {
-//                            ServiceDescription SD = (ServiceDescription) iter.next();
-//
-//                            System.out.println(out + " " + SD.getName());
-//                        }
+
                         agentesProprietarios[i] = result[i].getName();
                         System.out.println(agentesProprietarios[i].getName());
 
@@ -104,9 +89,6 @@ public class AgenteCliente extends Agent {
             }
         });
 
-//        addBehaviour(new CyclicBehaviour(this) {
-//            
-//        });
         addBehaviour(new TrocaInformacoes());
         addBehaviour(new Negociar());
         addBehaviour(new FecharNegocio());
@@ -122,8 +104,6 @@ public class AgenteCliente extends Agent {
 
         private int step = 0;   //etapa na qual a comunicação se encontra
         private int grade = 0;  //o grau de cumprimento das requisições
-        //private double valorProposta = imovel.getValor();
-        //private int quantPropostas = 0;
 
         @Override
         public void action() {
@@ -141,7 +121,7 @@ public class AgenteCliente extends Agent {
                             send(reply);
 
                             step = 1;
-                            //tratar problema
+
                         } else {
                             System.out.println(msg.getSender().getName() + " informa que o imóvel não está disponível");
                             step = 4;
@@ -208,26 +188,6 @@ public class AgenteCliente extends Agent {
                             grade++;
                         }
                         
-//                        if(grade >= 2){
-//                            melhoresProprietarios[quantVendedores].setProprietario(msg.getSender());
-//                            melhoresProprietarios[quantVendedores].setGradeProprietario(grade);
-//                            melhoresProprietarios[quantVendedores].setValorPropriedade(valor);
-//                            quantVendedores++;
-//                        }
-                        
-//                        for (int i = 0; i < melhoresProprietarios.length; i++) {
-//                            MelhoresProprietarios aux = melhoresProprietarios[i];
-//                            for (int j = i - 1; (j >= 0) && (melhoresProprietarios[j].getGradeProprietario() <= aux.getGradeProprietario()); j--) {
-//                                if(melhoresProprietarios[j].getGradeProprietario() == aux.getGradeProprietario()){
-//                                    if(melhoresProprietarios[j].getValorPropriedade() > aux.getValorPropriedade()){
-//                                        melhoresProprietarios[j + 1] = melhoresProprietarios[j];
-//                                        melhoresProprietarios[j] = aux;
-//                                    }
-//                                }
-//                            }
-//                        }
-               
-
                         ACLMessage reply = msg.createReply();
                         if (grade >= 2) {
                             reply.setPerformative(ACLMessage.CFP);
@@ -235,8 +195,7 @@ public class AgenteCliente extends Agent {
                             step = 4;
                         } else {
                             reply.setPerformative(ACLMessage.FAILURE);
-                            reply.setContent("Nao tenho interesse no imovel");
-                            step = 4;
+                            reply.setContent("Nao tenho interesse no imovel");                        
                         }
                         send(reply);
 
@@ -245,46 +204,6 @@ public class AgenteCliente extends Agent {
                     }
                     break;
 
-                case 4:
-                    
-//                    mt = MessageTemplate.MatchPerformative(ACLMessage.UNKNOWN);
-//                    msg = myAgent.receive(mt);
-//
-//                    if (msg != null) {
-//                        ACLMessage reply = msg.createReply();
-//                        if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
-//                            System.out.println(msg.getSender() + " aceitou sua proposta.");
-//                            step = 5;
-//                        } else if (msg.getPerformative() == ACLMessage.PROPOSE) {
-//                            System.out.println(msg.getSender().getName() + " ofereceu o imóvel por " + msg.getContent());
-//                            double valorOferecido = Double.valueOf(msg.getContent());
-//                            if (valorOferecido <= valorProposta) {
-//                                reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
-//                                reply.setContent("Proposta aceita.");
-//                            } else if ((valorOferecido > valorProposta) && (quantPropostas < 3)) {
-//                                valorProposta = valorProposta * 1.05;
-//                                reply.setPerformative(ACLMessage.CFP);
-//                                reply.setContent(String.valueOf(valorProposta));
-//                                quantPropostas++;
-//                            } else {
-//                                reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
-//                                reply.setContent("Proposta rejeitada.");
-//                                step = 5;
-//                            }
-//
-//                        } else {
-//                            if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
-//                                System.out.println(msg.getSender() + " recusou sua proposta.");
-//                                step = 5;
-//                            }
-//                        }
-//                        send(reply);
-//                    } else {
-//                        block();
-//                    }
-                    
-                    
-                    break;
             }
         }
 
@@ -311,7 +230,7 @@ public class AgenteCliente extends Agent {
                 
                 double valorOferecido = Double.valueOf(msg.getContent()); //valor oferecido pelo proprietario
                 
-                if (valorOferecido <= valorProposta) {
+                if (valorOferecido <= valorProposta * 1.05) {
                     reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
                     reply.setContent("Proposta aceita.");
                 } else if ((valorOferecido > valorProposta) && (numeroPropostas < 3)) {
@@ -323,7 +242,6 @@ public class AgenteCliente extends Agent {
                 } else {
                     reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
                     reply.setContent("Proposta rejeitada.");
-                    //step = 5;
                 }
                 send(reply);
 
@@ -344,6 +262,7 @@ public class AgenteCliente extends Agent {
 
             if (msg != null) {
                 System.out.println(msg.getSender() + " aceitou sua proposta.");
+                doDelete();
             } else {
                 block();
             }
@@ -360,24 +279,11 @@ public class AgenteCliente extends Agent {
 
             if (msg != null) {
                 System.out.println(msg.getSender() + " recusou sua proposta.");
+                doDelete();
             } else {
                 block();
             }
         }
     }
 
-//    private class NegociacaoRecusada extends OneShotBehaviour {
-//
-//        @Override
-//        public void action() {
-//            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.FAILURE);
-//            ACLMessage msg = myAgent.receive(mt);
-//            
-//            System.out.println(msg.getSender() + " não tem interesse em sua proposta.");
-//            myAgent.doDelete();
-//        }
-//
-//        
-//        
-//    }
 }
