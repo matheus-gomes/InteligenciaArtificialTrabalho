@@ -38,7 +38,6 @@ public class AgenteProprietario extends Agent {
         if (args != null && args.length > 0) {
             imovel.setTipoImovel((String) args[0]);
             imovel.setTamanho(Double.valueOf((String) args[1]));
-            //imovel.setQuantQuartos(Integer.parseInt((String) args[2]));
             imovel.setLocalizacao((String) args[2]);
             imovel.setValor(Double.valueOf((String) args[3]));
 
@@ -71,10 +70,10 @@ public class AgenteProprietario extends Agent {
 
         addBehaviour(new ReceberSolicitacao());
         addBehaviour(new TrocaInformações());
-        //addBehaviour(new GerenciadorDeNegociacao());
         addBehaviour(new Negociar());
         addBehaviour(new FecharNegocio());
         addBehaviour(new OfertaRecusada());
+        addBehaviour(new NegociacaoRecusada());
     }
 
     protected void takeDown() {
@@ -149,7 +148,7 @@ public class AgenteProprietario extends Agent {
         }
 
     }
-    
+
     private class Negociar extends CyclicBehaviour {
 
         private double valorProposta = imovel.getValor();
@@ -166,7 +165,7 @@ public class AgenteProprietario extends Agent {
 
                 double valorOferecido = Double.valueOf(msg.getContent()); //valor oferecido pelo cliente
 
-                if (valorOferecido >= valorProposta) {
+                if (valorOferecido >= valorProposta * 0.95) {
                     reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
                     reply.setContent("Proposta aceita.");
                 } else if ((valorOferecido < valorProposta) && (numeroPropostas < 3)) {
@@ -186,83 +185,54 @@ public class AgenteProprietario extends Agent {
         }
 
     }
-    
+
     private class FecharNegocio extends CyclicBehaviour {
 
         @Override
         public void action() {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
             ACLMessage msg = myAgent.receive(mt);
-            
-            if(msg != null){
+
+            if (msg != null) {
                 System.out.println(msg.getSender() + " aceitou sua proposta.");
-            }
-            else {
+                myAgent.doDelete();
+            } else {
                 block();
             }
         }
-        
+
     }
-    
+
     private class OfertaRecusada extends CyclicBehaviour {
-        
+
         @Override
         public void action() {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REJECT_PROPOSAL);
             ACLMessage msg = myAgent.receive(mt);
-            
-            if(msg != null){
+
+            if (msg != null) {
                 System.out.println(msg.getSender() + " recusou sua proposta.");
-            }
-            else {
+                myAgent.doDelete();
+            } else {
                 block();
             }
         }
     }
-    
-//    private class GerenciadorDeNegociacao extends CyclicBehaviour {
-//
-//        private double valorProposta = imovel.getValor();
-//        private int numeroPropostas = 0;
-//
-//        @Override
-//        public void action() {
-//            ACLMessage msg = myAgent.receive();
-//
-//            if (msg != null) {
-//                ACLMessage reply = msg.createReply();
-//
-//                if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
-//                    System.out.println(msg.getSender() + " aceitou sua proposta.");
-//                } else if (msg.getPerformative() == ACLMessage.PROPOSE) {
-//                    System.out.println(msg.getSender().getName() + " pode pagar " + msg.getContent());
-//
-//                    double valorOferecido = Double.valueOf(msg.getContent());
-//
-//                    if (valorOferecido >= valorProposta) {
-//                        reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
-//                        reply.setContent("Proposta aceita.");
-//                    } else if ((valorOferecido < valorProposta) && (numeroPropostas < 3)) {
-//                        valorProposta = valorProposta * 0.95;
-//                        reply.setPerformative(ACLMessage.PROPOSE);
-//                        reply.setContent(String.valueOf(valorProposta));
-//                        numeroPropostas++;
-//                    } else {
-//                        reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
-//                        reply.setContent("Proposta recusada.");
-//                    }
-//                } else {
-//                    if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
-//                        System.out.println(msg.getSender() + " recusou sua proposta.");
-//
-//                    }
-//                }
-//
-//                send(reply);
-//            } else {
-//                block();
-//            }
-//        }
-//
-//    }
+
+    private class NegociacaoRecusada extends CyclicBehaviour {
+
+        @Override
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.FAILURE);
+            ACLMessage msg = myAgent.receive(mt);
+
+            if (msg != null) {
+                System.out.println(msg.getSender() + " não tem interesse em seu imóvel.");
+                myAgent.doDelete();
+            } else {
+                block();
+            }
+        }
+    }
+
 }
